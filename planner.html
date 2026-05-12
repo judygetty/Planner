@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0F1117;
+    --surface: #13151E;
+    --surface2: #1A1C24;
+    --border: #1E2030;
+    --border2: #2A2C34;
+    --text: #E8E6E0;
+    --muted: #888;
+    --dim: #555;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --green: #22C55E;
+    --blue: #60A5FA;
+    --pink: #F472B6;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+  /* ── Layout ── */
+  #app { min-height: 100vh; }
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 22px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-inner { max-width: 700px; margin: 0 auto; }
+  .header-top { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+  .title { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.5px; line-height: 1.1; }
+  .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .add-btn {
+    background: transparent; border: 1.5px solid var(--amber); color: var(--amber);
+    border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+  }
+  .add-btn:hover { background: var(--amber); color: var(--bg); }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px;
+    display: flex; align-items: center; gap: 12;
+  }
+  .summary-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .summary-text { font-family: 'DM Serif Display', serif; font-size: 15px; font-style: italic; }
+  .summary-count { margin-left: auto; font-size: 12px; color: var(--dim); }
+
+  /* ── List ── */
+  .list { max-width: 700px; margin: 0 auto; padding: 24px 40px 100px; }
+  .empty-state { text-align: center; padding: 80px 0; color: #333; }
+  .empty-title { font-family: 'DM Serif Display', serif; font-size: 20px; font-style: italic; margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; }
+
+  /* ── Item ── */
+  .item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 12;
+    transition: opacity 0.3s;
+  }
+  .item.high-priority { border-left: 3px solid var(--red); }
+  .item.completed { opacity: 0.42; }
+  .item:hover .item-actions { opacity: 1; }
+  .item-actions { opacity: 0; transition: opacity 0.2s; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  /* checkbox */
+  .checkbox {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border2); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: border-color 0.2s; margin-top: 2px;
+  }
+  .checkbox:hover { border-color: var(--amber); }
+  .checkbox.checked { background: var(--surface2); border-color: var(--surface2); }
+  .checkmark { display: none; }
+  .checkbox.checked .checkmark { display: block; }
+
+  /* item body */
+  .item-body { flex: 1; min-width: 0; }
+  .item-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .chip {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .item-title {
+    font-size: 15px; font-weight: 500; color: var(--text);
+    line-height: 1.3; word-break: break-word;
+  }
+  .item-title.done { text-decoration: line-through; color: var(--dim); }
+  .item-notes { font-size: 12px; color: #666; font-style: italic; margin-top: 2px; }
+  .item-date { font-size: 12px; color: var(--amber); opacity: 0.85; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+  /* action buttons */
+  .act-btn {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--muted); font-size: 13px;
+    padding: 6px 10px; cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .act-btn:hover { border-color: #444; color: var(--text); }
+  .act-btn.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); color: var(--red); }
+  .cal-btn { white-space: nowrap; }
+  .cal-btn.ok { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.35); color: var(--green); }
+  .cal-btn.err { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); color: var(--red); }
+
+  /* ── Modal ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 28px; width: 100%; max-width: 480px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6); margin: 20px;
+  }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 22px; font-style: italic; margin-bottom: 22px; }
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 11px; color: #666; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .finput {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; color: var(--text); padding: 10px 14px;
+    width: 100%; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    transition: border-color 0.2s; outline: none;
+  }
+  .finput:focus { border-color: var(--amber); }
+  .finput::placeholder { color: #444; }
+  textarea.finput { resize: none; }
+  .seg-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg {
+    padding: 7px 14px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted); font-size: 13px;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    transition: all 0.15s; border-radius: 6px;
+  }
+  .seg:hover:not(.active) { border-color: #444; color: #ccc; }
+  .seg.active { background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 600; }
+  .seg.active.red { background: var(--red); border-color: var(--red); color: #fff; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 22px; }
+  .btn-cancel {
+    background: transparent; border: 1px solid var(--border2); color: var(--muted);
+    border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-save {
+    background: var(--amber); color: var(--bg); border: none;
+    border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.2s;
+  }
+  .btn-save:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Settings strip ── */
+  .settings-strip {
+    max-width: 700px; margin: 0 auto;
+    padding: 16px 40px 0;
+    display: flex; align-items: center; gap: 10;
+  }
+  .api-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; color: var(--muted); padding: 8px 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none;
+  }
+  .api-input:focus { border-color: var(--amber); color: var(--text); }
+  .api-label { font-size: 11px; color: var(--dim); white-space: nowrap; }
+
+  @media (max-width: 600px) {
+    .header { padding: 20px; }
+    .list { padding: 16px 16px 100px; }
+    .settings-strip { padding: 12px 16px 0; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div>
+          <div class="title">My Planner</div>
+          <div class="subtitle" id="dateLabel"></div>
+        </div>
+        <button class="add-btn" onclick="openForm()">
+          <span style="font-size:18px;line-height:1">+</span> Add Item
+        </button>
+      </div>
+      <div class="summary-bar" style="display:flex;align-items:center;gap:12px;">
+        <div class="summary-dot" id="summaryDot"></div>
+        <span class="summary-text" id="summaryText"></span>
+        <span class="summary-count" id="summaryCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- API KEY STRIP -->
+  <div class="settings-strip">
+    <span class="api-label">Anthropic API key (for Google Calendar push):</span>
+    <input class="api-input" type="password" id="apiKeyInput" placeholder="sk-ant-…" oninput="saveApiKey()" />
+  </div>
+
+  <!-- LIST -->
+  <div class="list" id="itemList"></div>
+
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="modal" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">New Item</div>
+
+    <div class="field">
+      <label>Title</label>
+      <input class="finput" id="fTitle" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')saveItem()" />
+    </div>
+
+    <div class="field">
+      <label>Type</label>
+      <div class="seg-group" id="typeGroup">
+        <button class="seg active" data-val="task" onclick="setSeg('type',this)">⬡ Task</button>
+        <button class="seg" data-val="meeting" onclick="setSeg('type',this)">◈ Meeting</button>
+        <button class="seg" data-val="reminder" onclick="setSeg('type',this)">◉ Reminder</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Priority</label>
+      <div class="seg-group" id="priorityGroup">
+        <button class="seg active" data-val="normal" onclick="setSeg('priority',this)">↔ Normal</button>
+        <button class="seg" data-val="high" onclick="setSeg('priority',this)">↑ High</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Date</label>
+        <input class="finput" type="date" id="fDate" style="color-scheme:dark" />
+      </div>
+      <div class="field">
+        <label>Time</label>
+        <input class="finput" type="time" id="fTime" style="color-scheme:dark" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Notes</label>
+      <textarea class="finput" id="fNotes" rows="2" placeholder="Optional notes…"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeForm()">Cancel</button>
+      <button class="btn-save" id="saveBtn" onclick="saveItem()">Add Item</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let items = JSON.parse(localStorage.getItem('todox_v2') || '[]');
+let editId = null;
+let formType = 'task';
+let formPriority = 'normal';
+let deleteConfirm = null;
+const calStatus = {};
+
+const TYPES = {
+  task:     { label:'Task',     icon:'⬡', color:'#F59E0B', bg:'rgba(245,158,11,0.14)', border:'rgba(245,158,11,0.38)' },
+  meeting:  { label:'Meeting',  icon:'◈', color:'#60A5FA', bg:'rgba(96,165,250,0.14)',  border:'rgba(96,165,250,0.38)' },
+  reminder: { label:'Reminder', icon:'◉', color:'#F472B6', bg:'rgba(244,114,182,0.14)',border:'rgba(244,114,182,0.38)' },
+};
+
+// ── Persist ────────────────────────────────────────────────────────────────
+function save() { localStorage.setItem('todox_v2', JSON.stringify(items)); }
+function saveApiKey() { localStorage.setItem('todox_apikey', document.getElementById('apiKeyInput').value); }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function isToday(d) { return d === todayStr(); }
+function formatDT(date, time) {
+  if (!date) return null;
+  const d = new Date(date + 'T00:00:00');
+  const dl = isToday(date) ? 'Today' : d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+  return time ? dl + ' · ' + time : dl;
+}
+function addHour(t) {
+  const [h,m] = t.split(':').map(Number);
+  return String((h+1)%24).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  // date label
+  document.getElementById('dateLabel').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' }).toUpperCase();
+
+  // sort: incomplete high → incomplete normal → completed
+  const sorted = [...items].sort((a,b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    if (!a.completed && a.priority !== b.priority) return a.priority === 'high' ? -1 : 1;
+    return a.createdAt - b.createdAt;
+  });
+
+  // summary
+  const incomplete = items.filter(i => !i.completed);
+  const todayItems = incomplete.filter(i => isToday(i.date));
+  const dot = document.getElementById('summaryDot');
+  const txt = document.getElementById('summaryText');
+  const cnt = document.getElementById('summaryCount');
+  if (todayItems.length > 0) {
+    dot.style.background = '#F59E0B';
+    txt.style.color = '#E8E6E0';
+    txt.textContent = `${todayItems.length} ${todayItems.length===1?'item':'items'} remaining for today`;
+  } else if (incomplete.length > 0) {
+    dot.style.background = '#F59E0B';
+    txt.style.color = '#E8E6E0';
+    txt.textContent = `${incomplete.length} ${incomplete.length===1?'item':'items'} pending`;
+  } else if (items.length > 0) {
+    dot.style.background = '#22C55E';
+    txt.style.color = '#22C55E';
+    txt.textContent = 'All tasks complete ✓';
+  } else {
+    dot.style.background = '#555';
+    txt.style.color = '#888';
+    txt.textContent = 'Your list is empty';
+  }
+  cnt.textContent = items.length ? `${items.filter(i=>i.completed).length}/${items.length} done` : '';
+
+  // list
+  const list = document.getElementById('itemList');
+  if (sorted.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-title">Nothing here yet</div><div class="empty-sub">Add your first task, meeting, or reminder</div></div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(item => {
+    const t = TYPES[item.type];
+    const isHigh = item.priority === 'high';
+    const dt = formatDT(item.date, item.time);
+    const cs = calStatus[item.id] || '';
+    const isDone = item.completed;
+
+    const calBtnLabel = cs==='loading'?'⟳ …': cs==='ok'?'✓ Added': cs==='err'?'✗ Failed':'📅';
+    const calBtnClass = `act-btn cal-btn${cs==='ok'?' ok':cs==='err'?' err':''}`;
+
+    const delBtn = deleteConfirm === item.id
+      ? `<button class="act-btn danger" onclick="confirmDelete('${item.id}')">Sure?</button>`
+      : `<button class="act-btn" onclick="askDelete('${item.id}')" title="Delete">✕</button>`;
+
+    return `
+    <div class="item${isHigh&&!isDone?' high-priority':''}${isDone?' completed':''}" id="item-${item.id}">
+      <div class="checkbox${isDone?' checked':''}" onclick="toggleComplete('${item.id}')">
+        <svg class="checkmark" width="10" height="8" viewBox="0 0 10 8" fill="none">
+          <path d="M1 4L3.5 6.5L9 1" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="item-body">
+        <div class="item-chips">
+          <span class="chip" style="color:${t.color};background:${t.bg};border:1px solid ${t.border}">${t.icon} ${t.label}</span>
+          ${isHigh ? `<span class="chip" style="color:#EF4444;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3)">↑ High Priority</span>` : ''}
+        </div>
+        <div class="item-title${isDone?' done':''}">${escHtml(item.title)}</div>
+        ${item.notes ? `<div class="item-notes">${escHtml(item.notes)}</div>` : ''}
+        ${dt ? `<div class="item-date">◷ ${escHtml(dt)}</div>` : ''}
+      </div>
+      <div class="item-actions">
+        ${!isDone ? `<button class="${calBtnClass}" onclick="pushToCalendar('${item.id}')" ${cs==='loading'?'disabled':''} title="Push to Google Calendar">${calBtnLabel}</button>` : ''}
+        <button class="act-btn" onclick="openEdit('${item.id}')" title="Edit">✎</button>
+        ${delBtn}
+      </div>
+    </div>`;
+  }).join('');
+
+  // restore api key display
+  const stored = localStorage.getItem('todox_apikey') || '';
+  document.getElementById('apiKeyInput').value = stored;
+}
+
+// ── CRUD ───────────────────────────────────────────────────────────────────
+function toggleComplete(id) {
+  items = items.map(i => i.id===id ? {...i, completed:!i.completed} : i);
+  save(); render();
+}
+function askDelete(id) {
+  deleteConfirm = id;
+  render();
+  setTimeout(() => { if (deleteConfirm===id) { deleteConfirm=null; render(); } }, 3000);
+}
+function confirmDelete(id) {
+  items = items.filter(i => i.id !== id);
+  deleteConfirm = null;
+  save(); render();
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────
+function openForm() {
+  editId = null;
+  formType = 'task'; formPriority = 'normal';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDate').value = '';
+  document.getElementById('fTime').value = '';
+  document.getElementById('fNotes').value = '';
+  setActiveSeg('typeGroup', 'task');
+  setActiveSeg('priorityGroup', 'normal');
+  document.getElementById('modalTitle').textContent = 'New Item';
+  document.getElementById('saveBtn').textContent = 'Add Item';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('fTitle').focus(), 50);
+}
+function openEdit(id) {
+  const item = items.find(i => i.id===id);
+  if (!item) return;
+  editId = id;
+  formType = item.type; formPriority = item.priority;
+  document.getElementById('fTitle').value = item.title;
+  document.getElementById('fDate').value = item.date || '';
+  document.getElementById('fTime').value = item.time || '';
+  document.getElementById('fNotes').value = item.notes || '';
+  setActiveSeg('typeGroup', item.type);
+  setActiveSeg('priorityGroup', item.priority);
+  document.getElementById('modalTitle').textContent = 'Edit Item';
+  document.getElementById('saveBtn').textContent = 'Save Changes';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('fTitle').focus(), 50);
+}
+function closeForm() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null;
+}
+function overlayClick(e) { if (e.target === e.currentTarget) closeForm(); }
+
+function setSeg(group, btn) {
+  const groupId = group==='type' ? 'typeGroup' : 'priorityGroup';
+  document.querySelectorAll('#'+groupId+' .seg').forEach(b => {
+    b.classList.remove('active','red');
+  });
+  btn.classList.add('active');
+  if (btn.dataset.val === 'high') btn.classList.add('red');
+  if (group==='type') formType = btn.dataset.val;
+  else formPriority = btn.dataset.val;
+  updateSaveBtn();
+}
+function setActiveSeg(groupId, val) {
+  document.querySelectorAll('#'+groupId+' .seg').forEach(b => {
+    b.classList.remove('active','red');
+    if (b.dataset.val===val) {
+      b.classList.add('active');
+      if (val==='high') b.classList.add('red');
+    }
+  });
+}
+function updateSaveBtn() {
+  document.getElementById('saveBtn').disabled = !document.getElementById('fTitle').value.trim();
+}
+
+function saveItem() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) return;
+  const item = {
+    id: editId || Date.now().toString(),
+    title, type: formType, priority: formPriority,
+    date: document.getElementById('fDate').value,
+    time: document.getElementById('fTime').value,
+    notes: document.getElementById('fNotes').value.trim(),
+    completed: editId ? items.find(i=>i.id===editId).completed : false,
+    createdAt: editId ? items.find(i=>i.id===editId).createdAt : Date.now(),
+  };
+  if (editId) items = items.map(i => i.id===editId ? item : i);
+  else items = [...items, item];
+  save(); closeForm(); render();
+}
+
+// ── Google Calendar via Anthropic API ──────────────────────────────────────
+async function pushToCalendar(id) {
+  const apiKey = localStorage.getItem('todox_apikey') || '';
+  if (!apiKey) {
+    alert('Please enter your Anthropic API key in the field at the top of the page to use Google Calendar sync.');
+    return;
+  }
+  const item = items.find(i => i.id===id);
+  if (!item) return;
+
+  calStatus[id] = 'loading';
+  render();
+
+  const start = item.date
+    ? (item.time ? `${item.date}T${item.time}:00` : `${item.date}T09:00:00`)
+    : new Date().toISOString();
+  const end = item.date
+    ? (item.time ? `${item.date}T${addHour(item.time)}:00` : `${item.date}T10:00:00`)
+    : new Date(Date.now()+3600000).toISOString();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: `Create a Google Calendar event:\n- Title: ${item.title}\n- Type: ${item.type}\n- Start: ${start}\n- End: ${end}\n- Priority: ${item.priority}\n${item.notes?'- Notes: '+item.notes:''}\nAdd it to my primary calendar.` }],
+        mcp_servers: [{ type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1', name: 'google-calendar' }],
+      }),
+    });
+    calStatus[id] = res.ok ? 'ok' : 'err';
+  } catch { calStatus[id] = 'err'; }
+
+  render();
+  setTimeout(() => { delete calStatus[id]; render(); }, 3000);
+}
+
+// ── Live title validation ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fTitle').addEventListener('input', updateSaveBtn);
+  const stored = localStorage.getItem('todox_apikey') || '';
+  document.getElementById('apiKeyInput').value = stored;
+  render();
+});
+</script>
+</body>
+</html>
